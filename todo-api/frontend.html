@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>To-Do List API Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    input, button { margin: 0.5em; }
+    .task { margin-bottom: 1em; }
+  </style>
+</head>
+<body>
+  <h1>To-Do List API Demo</h1>
+  <form id="addTaskForm">
+    <input type="text" id="title" placeholder="Task title" required>
+    <button type="submit">Add Task</button>
+  </form>
+  <h2>Tasks</h2>
+  <div id="tasks"></div>
+  <script>
+    async function fetchTasks() {
+      const res = await fetch('/tasks');
+      const tasks = await res.json();
+      const container = document.getElementById('tasks');
+      container.innerHTML = '';
+      tasks.forEach(task => {
+        const div = document.createElement('div');
+        div.className = 'task';
+        div.innerHTML = `
+          <strong>${task.title}</strong> [${task.completed ? '✔️' : '❌'}]
+          <button onclick="completeTask(${task.id}, '${task.title.replace(/'/g, "&#39;")}', ${!task.completed})">Toggle</button>
+          <button onclick="deleteTask(${task.id})">Delete</button>
+          <button onclick="viewTask(${task.id})">View</button>
+          <button onclick="showEditForm(${task.id}, '${task.title.replace(/'/g, "&#39;")}', ${task.completed})">Edit</button>
+          <div id="editForm${task.id}" style="display:none; margin-top:0.5em;"></div>
+          <div id="viewTask${task.id}" style="display:none; margin-top:0.5em;"></div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    window.viewTask = async function(id) {
+      const res = await fetch(`/tasks/${id}`);
+      if (res.ok) {
+        const t = await res.json();
+        document.getElementById(`viewTask${id}`).style.display = 'block';
+        document.getElementById(`viewTask${id}`).innerHTML = `<strong>Title:</strong> ${t.title}<br><strong>Completed:</strong> ${t.completed ? '✔️' : '❌'}<br><strong>ID:</strong> ${t.id}`;
+      } else {
+        document.getElementById(`viewTask${id}`).style.display = 'block';
+        document.getElementById(`viewTask${id}`).innerHTML = '<em>Task not found.</em>';
+      }
+    }
+
+    window.showEditForm = function(id, title, completed) {
+      const formDiv = document.getElementById(`editForm${id}`);
+      formDiv.style.display = 'block';
+      formDiv.innerHTML = `
+        <form onsubmit="event.preventDefault(); editTask(${id});">
+          <input type="text" id="editTitle${id}" value="${title}" required>
+          <label><input type="checkbox" id="editCompleted${id}" ${completed ? 'checked' : ''}> Completed</label>
+          <button type="submit">Save</button>
+          <button type="button" onclick="hideEditForm(${id})">Cancel</button>
+        </form>
+      `;
+    }
+
+    window.hideEditForm = function(id) {
+      document.getElementById(`editForm${id}`).style.display = 'none';
+    }
+
+    window.editTask = async function(id) {
+      const title = document.getElementById(`editTitle${id}`).value;
+      const completed = document.getElementById(`editCompleted${id}`).checked;
+      await fetch(`/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, completed })
+      });
+      hideEditForm(id);
+      fetchTasks();
+    }
+    async function completeTask(id, title, completed) {
+      await fetch(`/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, completed })
+      });
+      fetchTasks();
+    }
+    async function deleteTask(id) {
+      await fetch(`/tasks/${id}`, { method: 'DELETE' });
+      fetchTasks();
+    }
+    document.getElementById('addTaskForm').onsubmit = async e => {
+      e.preventDefault();
+      const title = document.getElementById('title').value;
+      await fetch('/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, completed: false })
+      });
+      document.getElementById('title').value = '';
+      fetchTasks();
+    };
+    fetchTasks();
+  </script>
+</body>
+</html>
