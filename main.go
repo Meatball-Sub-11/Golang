@@ -41,7 +41,9 @@ func main() {
 	})
 
 	println("Server running on http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		panic(err)
+	}
 }
 
 func tasksHandler(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +65,9 @@ func tasksHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			allTasks = append(allTasks, t)
 		}
-		json.NewEncoder(w).Encode(allTasks)
+		if err := json.NewEncoder(w).Encode(allTasks); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	case http.MethodPost:
 		var t Task
 		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -78,7 +82,9 @@ func tasksHandler(w http.ResponseWriter, r *http.Request) {
 		id, _ := res.LastInsertId()
 		t.ID = int(id)
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(t)
+		if err := json.NewEncoder(w).Encode(t); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -102,7 +108,9 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(t)
+		if err := json.NewEncoder(w).Encode(t); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	case http.MethodPut:
 		var updated Task
 		if err := json.NewDecoder(r.Body).Decode(&updated); err != nil {
@@ -115,7 +123,9 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		updated.ID = id
-		json.NewEncoder(w).Encode(updated)
+		if err := json.NewEncoder(w).Encode(updated); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	case http.MethodDelete:
 		_, err := db.Exec("DELETE FROM tasks WHERE id = ?", id)
 		if err != nil {
